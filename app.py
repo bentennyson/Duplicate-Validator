@@ -411,8 +411,31 @@ def sim_bar(label, value):
 
 
 if st.session_state.data_loaded:
-    # Review interface header (unchanged styling)
-    st.markdown('<div class="app-title">Twin Finder</div>', unsafe_allow_html=True)
+    # Review interface header: small clickable wordmark returns to the home page
+    st.markdown("""
+    <style>
+      .st-key-tf_home button {
+          background: transparent !important; border: none !important;
+          padding: 0 !important; box-shadow: none !important;
+          color: #1C1917 !important; font-weight: 700 !important;
+          font-size: 1.02rem !important; letter-spacing: -0.01em !important;
+      }
+      .st-key-tf_home button:hover { color: #4A6FA5 !important; }
+      .st-key-tf_home button p { font-weight: 700 !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    _logo, _rest = st.columns([1, 5])
+    with _logo:
+        if st.button("◈  Twin Finder", key="tf_home", help="Back to home"):
+            st.session_state.data_loaded = False
+            st.session_state.df = None
+            st.session_state.candidate_pairs = None
+            st.session_state.current_pair_idx = 0
+            st.session_state.feedback_log = []
+            st.session_state.landing_panel = "computer"
+            st.rerun()
+
     st.markdown('<div class="app-subtitle">Human-in-the-loop review for bibliographic data cleaning</div>',
                 unsafe_allow_html=True)
 
@@ -457,31 +480,25 @@ if not st.session_state.data_loaded:
         font-size: 0.70rem; letter-spacing: 0.22em; text-transform: uppercase;
         color: #6E86A8; margin-bottom: 1.1rem;
     }
-    .tf-titlewrap { position: relative; display: inline-block; }
-    .tf-ghost {
-        position: absolute; left: 9px; top: 8px; z-index: 0;
-        font-family: 'Space Grotesk', sans-serif; font-weight: 700;
-        font-size: clamp(3rem, 8.5vw, 5.4rem); line-height: 1;
-        letter-spacing: -0.035em; color: rgba(86,146,255,.20);
-        white-space: nowrap; pointer-events: none; user-select: none;
-    }
     .tf-title {
-        position: relative; z-index: 1; margin: 0;
+        margin: 0;
         font-family: 'Space Grotesk', sans-serif; font-weight: 700;
-        font-size: clamp(3rem, 8.5vw, 5.4rem); line-height: 1;
-        letter-spacing: -0.035em; white-space: nowrap;
-        background: linear-gradient(180deg, #FFFFFF 12%, #9FC2FF 100%);
+        font-size: clamp(3.2rem, 9.5vw, 6.2rem); line-height: 1.02;
+        letter-spacing: -0.04em;
+        background: linear-gradient(180deg, #FFFFFF 10%, #A8C8FF 100%);
         -webkit-background-clip: text; background-clip: text;
         -webkit-text-fill-color: transparent;
+        text-shadow: 0 0 70px rgba(74,141,255,.30);
     }
     .tf-lede {
-        font-family: 'Space Grotesk', sans-serif; font-weight: 500;
-        font-size: clamp(1.05rem, 2.4vw, 1.4rem); color: #D3E0F5;
-        margin: 1.5rem auto 0.9rem auto; letter-spacing: -0.01em;
+        font-family: 'Inter', sans-serif; font-weight: 400;
+        font-size: clamp(0.98rem, 1.6vw, 1.12rem); color: #C6D6EE;
+        margin: 1.35rem auto 0.7rem auto; letter-spacing: 0.002em;
     }
     .tf-sub {
-        font-family: 'Inter', sans-serif; font-size: 0.97rem; line-height: 1.65;
-        color: #8DA0BC; max-width: 640px; margin: 0 auto;
+        font-family: 'Inter', sans-serif; font-weight: 400;
+        font-size: 0.90rem; line-height: 1.75; letter-spacing: 0.01em;
+        color: #7F92B0; max-width: 545px; margin: 0 auto;
     }
 
     /* Tabs */
@@ -571,23 +588,45 @@ if not st.session_state.data_loaded:
 
     <div class="tf-hero">
         <div class="tf-eyebrow">Bibliographic data cleaning</div>
-        <div class="tf-titlewrap">
-            <span class="tf-ghost" aria-hidden="true">Twin Finder</span>
-            <h1 class="tf-title">Twin Finder</h1>
-        </div>
+        <h1 class="tf-title">Twin Finder</h1>
         <p class="tf-lede">Finds the records that say the same thing twice.</p>
         <p class="tf-sub">
-            Load a catalogue of papers and Twin Finder ranks the pairs most likely to be
-            duplicates, showing the field-by-field evidence behind every match — matching
-            titles, shared authors, venue, year. You make the final call on each one, and
-            your decisions come back as a log you can keep.
+            Load a catalogue and Twin Finder ranks the pairs most likely to be duplicates,
+            showing the evidence behind every match. You make the final call on each one.
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-    tab1, tab2, tab3 = st.tabs(["Upload file", "Sample data", "Format guide"])
+    if "landing_panel" not in st.session_state:
+        st.session_state.landing_panel = "computer"
 
-    with tab1:
+    def _panel(name):
+        st.session_state.landing_panel = name
+        st.rerun()
+
+    _sp1, _b1, _b2, _sp2 = st.columns([1, 1.25, 1.25, 1], gap="small")
+    with _b1:
+        if st.button("Upload from computer", use_container_width=True, key="btn_computer",
+                     type="primary" if st.session_state.landing_panel == "computer" else "secondary"):
+            _panel("computer")
+    with _b2:
+        if st.button("Upload from URL", use_container_width=True, key="btn_url",
+                     type="primary" if st.session_state.landing_panel == "url" else "secondary"):
+            _panel("url")
+
+    _q1, _s1, _s2, _q2 = st.columns([1.3, 1.1, 1.1, 1.3], gap="small")
+    with _s1:
+        if st.button("Try sample data", use_container_width=True, key="btn_sample"):
+            _panel("sample")
+    with _s2:
+        if st.button("Format guide", use_container_width=True, key="btn_guide"):
+            _panel("guide")
+
+    st.write("")
+
+    _panel_now = st.session_state.landing_panel
+
+    if _panel_now == "computer":
         st.markdown("Upload a CSV or JSON file with your bibliographic records. "
                     "Columns can have any names — you'll map them after upload.")
 
@@ -705,100 +744,100 @@ if not st.session_state.data_loaded:
                         st.error(f"Error processing file: {e}")
 
         # ---- Deployed / cloud: load a large file from a public URL ----
-        with st.expander("Large dataset? Load it from a URL"):
-            st.caption(
-                "The hosted server can't read files off your computer, but it "
-                "can download from a public link. Host your dataset somewhere "
-                "public — Hugging Face, Zenodo, a GitHub release, an S3/HTTP "
-                "link, or a Google Drive direct-download link — and paste the "
-                "URL. The server streams it in chunks, so memory stays bounded. "
-                "CSV and JSON-lines formats stream best.")
-            url = st.text_input(
-                "Public file URL",
-                placeholder="https://huggingface.co/datasets/you/data/resolve/main/records.jsonl",
-                key="url_input")
-            if st.button("Load from URL", key="load_from_url"):
-                import os, tempfile, urllib.request
-                url = (url or "").strip().strip('"')
-                if not url.lower().startswith(("http://", "https://")):
-                    st.warning("Paste a full http(s) URL.")
-                else:
-                    try:
-                        # Stream the download to a temp file (bounded memory)
-                        lower = url.lower().split("?")[0]
-                        suffix = (".csv" if lower.endswith(".csv")
-                                  else ".jsonl" if lower.endswith((".jsonl", ".ndjson"))
-                                  else ".json")
-                        tf = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-                        status = st.empty()
-                        req = urllib.request.Request(
-                            url, headers={"User-Agent": "duplicate-validator"})
-                        with urllib.request.urlopen(req) as resp:
-                            total = resp.length or 0
-                            got = 0
-                            while True:
-                                block = resp.read(1024 * 1024)  # 1 MB chunks
-                                if not block:
-                                    break
-                                tf.write(block)
-                                got += len(block)
-                                if total:
-                                    status.text(f"Downloading... {got/1e6:.0f} / {total/1e6:.0f} MB")
-                                else:
-                                    status.text(f"Downloading... {got/1e6:.0f} MB")
-                        tf.close()
-                        url_path = tf.name
+    elif _panel_now == "url":
+        st.caption(
+            "The hosted server can't read files off your computer, but it "
+            "can download from a public link. Host your dataset somewhere "
+            "public — Hugging Face, Zenodo, a GitHub release, an S3/HTTP "
+            "link, or a Google Drive direct-download link — and paste the "
+            "URL. The server streams it in chunks, so memory stays bounded. "
+            "CSV and JSON-lines formats stream best.")
+        url = st.text_input(
+            "Public file URL",
+            placeholder="https://huggingface.co/datasets/you/data/resolve/main/records.jsonl",
+            key="url_input")
+        if st.button("Load from URL", key="load_from_url"):
+            import os, tempfile, urllib.request
+            url = (url or "").strip().strip('"')
+            if not url.lower().startswith(("http://", "https://")):
+                st.warning("Paste a full http(s) URL.")
+            else:
+                try:
+                    # Stream the download to a temp file (bounded memory)
+                    lower = url.lower().split("?")[0]
+                    suffix = (".csv" if lower.endswith(".csv")
+                              else ".jsonl" if lower.endswith((".jsonl", ".ndjson"))
+                              else ".json")
+                    tf = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+                    status = st.empty()
+                    req = urllib.request.Request(
+                        url, headers={"User-Agent": "duplicate-validator"})
+                    with urllib.request.urlopen(req) as resp:
+                        total = resp.length or 0
+                        got = 0
+                        while True:
+                            block = resp.read(1024 * 1024)  # 1 MB chunks
+                            if not block:
+                                break
+                            tf.write(block)
+                            got += len(block)
+                            if total:
+                                status.text(f"Downloading... {got/1e6:.0f} / {total/1e6:.0f} MB")
+                            else:
+                                status.text(f"Downloading... {got/1e6:.0f} MB")
+                    tf.close()
+                    url_path = tf.name
 
-                        # Detect JSON-lines
-                        is_jl3 = False
-                        if suffix in (".json", ".jsonl"):
-                            try:
-                                with open(url_path, encoding="utf-8") as fh:
-                                    head = fh.readline().strip()
-                                json.loads(head); is_jl3 = head.startswith("{")
-                            except Exception:
-                                is_jl3 = suffix == ".jsonl"
-
-                        if suffix == ".csv":
-                            preview = pd.read_csv(url_path, nrows=200, dtype=str)
-                        elif is_jl3:
-                            rows = []
-                            with open(url_path, encoding="utf-8") as fh:
-                                for line in fh:
-                                    if line.strip():
-                                        rows.append(json.loads(line))
-                                    if len(rows) >= 200:
-                                        break
-                            preview = pd.DataFrame(rows)
-                        else:
-                            preview = pd.read_json(url_path).head(200)
-
-                        mapping3 = auto_guess_mapping(list(preview.columns))
-                        st.caption("Auto-detected columns: " +
-                                   ", ".join(f"{k} → {v}" for k, v in mapping3.items() if v))
-                        from scalable_processing import read_records_chunked
-                        with st.spinner("Reading file in chunks (low memory)..."):
-                            df = read_records_chunked(
-                                url_path, mapping3, is_json_lines=is_jl3,
-                                chunksize=50_000,
-                                progress=lambda k: status.text(f"Loaded {k:,} records..."))
-                        status.text(f"Loaded {len(df):,} records.")
+                    # Detect JSON-lines
+                    is_jl3 = False
+                    if suffix in (".json", ".jsonl"):
                         try:
-                            os.remove(url_path)
+                            with open(url_path, encoding="utf-8") as fh:
+                                head = fh.readline().strip()
+                            json.loads(head); is_jl3 = head.startswith("{")
                         except Exception:
-                            pass
-                        with st.spinner("Finding candidate duplicates (token blocking)..."):
-                            candidate_pairs = generate_candidate_pairs(df, max_pairs=500)
-                        st.session_state.df = df
-                        st.session_state.candidate_pairs = candidate_pairs
-                        st.session_state.data_loaded = True
-                        st.session_state.current_pair_idx = 0
-                        st.session_state.feedback_log = []
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error downloading or reading file: {e}")
+                            is_jl3 = suffix == ".jsonl"
 
-    with tab2:
+                    if suffix == ".csv":
+                        preview = pd.read_csv(url_path, nrows=200, dtype=str)
+                    elif is_jl3:
+                        rows = []
+                        with open(url_path, encoding="utf-8") as fh:
+                            for line in fh:
+                                if line.strip():
+                                    rows.append(json.loads(line))
+                                if len(rows) >= 200:
+                                    break
+                        preview = pd.DataFrame(rows)
+                    else:
+                        preview = pd.read_json(url_path).head(200)
+
+                    mapping3 = auto_guess_mapping(list(preview.columns))
+                    st.caption("Auto-detected columns: " +
+                               ", ".join(f"{k} → {v}" for k, v in mapping3.items() if v))
+                    from scalable_processing import read_records_chunked
+                    with st.spinner("Reading file in chunks (low memory)..."):
+                        df = read_records_chunked(
+                            url_path, mapping3, is_json_lines=is_jl3,
+                            chunksize=50_000,
+                            progress=lambda k: status.text(f"Loaded {k:,} records..."))
+                    status.text(f"Loaded {len(df):,} records.")
+                    try:
+                        os.remove(url_path)
+                    except Exception:
+                        pass
+                    with st.spinner("Finding candidate duplicates (token blocking)..."):
+                        candidate_pairs = generate_candidate_pairs(df, max_pairs=500)
+                    st.session_state.df = df
+                    st.session_state.candidate_pairs = candidate_pairs
+                    st.session_state.data_loaded = True
+                    st.session_state.current_pair_idx = 0
+                    st.session_state.feedback_log = []
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error downloading or reading file: {e}")
+
+    elif _panel_now == "sample":
         st.markdown("Load the built-in DBLP sample dataset (599 records) to try the tool.")
         if st.button("Load sample data"):
             try:
@@ -814,7 +853,7 @@ if not st.session_state.data_loaded:
             except Exception as e:
                 st.error(f"Error loading sample data: {e}")
 
-    with tab3:
+    elif _panel_now == "guide":
         st.markdown("""
 **Required column**
 
