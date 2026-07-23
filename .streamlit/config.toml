@@ -7,4 +7,8 @@ textColor = "#292524"
 font = "sans serif"
 
 [server]
-maxUploadSize = 8192
+# Hosted (free tier) has ~1 GB RAM and a browser upload is held in memory once,
+# so the ceiling here is set to a size that actually works. Larger datasets go
+# through "Upload from URL", which streams server-side in chunks.
+# The local copy of the app can raise this (e.g. 8192) since memory is not the constraint.
+maxUploadSize = 200

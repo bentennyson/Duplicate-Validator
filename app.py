@@ -483,7 +483,7 @@ if not st.session_state.data_loaded:
     .tf-title {
         margin: 0;
         font-family: 'Space Grotesk', sans-serif; font-weight: 700;
-        font-size: clamp(3.2rem, 9.5vw, 6.2rem); line-height: 1.02;
+        font-size: clamp(3.6rem, 13vw, 9rem); line-height: 0.98;
         letter-spacing: -0.04em;
         background: linear-gradient(180deg, #FFFFFF 10%, #A8C8FF 100%);
         -webkit-background-clip: text; background-clip: text;
@@ -498,8 +498,22 @@ if not st.session_state.data_loaded:
     .tf-sub {
         font-family: 'Inter', sans-serif; font-weight: 400;
         font-size: 0.90rem; line-height: 1.75; letter-spacing: 0.01em;
-        color: #7F92B0; max-width: 545px; margin: 0 auto;
+        color: #7F92B0;
     }
+    /* Streamlit sets its own margins on <p>; override so the hero text truly centres */
+    .stApp .tf-hero { width: 100%; }
+    .stApp .tf-hero .tf-lede,
+    .stApp [data-testid="stMarkdownContainer"] p.tf-lede {
+        max-width: 100% !important; margin-left: auto !important;
+        margin-right: auto !important; text-align: center !important;
+    }
+    .stApp .tf-hero .tf-sub,
+    .stApp [data-testid="stMarkdownContainer"] p.tf-sub {
+        max-width: 560px !important; margin-left: auto !important;
+        margin-right: auto !important; text-align: center !important;
+    }
+    .stApp [data-testid="stMarkdownContainer"] p.tf-lede { color: #C6D6EE !important; }
+    .stApp [data-testid="stMarkdownContainer"] p.tf-sub  { color: #7F92B0 !important; }
 
     /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
@@ -614,21 +628,14 @@ if not st.session_state.data_loaded:
                      type="primary" if st.session_state.landing_panel == "url" else "secondary"):
             _panel("url")
 
-    _q1, _s1, _s2, _q2 = st.columns([1.3, 1.1, 1.1, 1.3], gap="small")
-    with _s1:
-        if st.button("Try sample data", use_container_width=True, key="btn_sample"):
-            _panel("sample")
-    with _s2:
-        if st.button("Format guide", use_container_width=True, key="btn_guide"):
-            _panel("guide")
-
-    st.write("")
 
     _panel_now = st.session_state.landing_panel
 
     if _panel_now == "computer":
         st.markdown("Upload a CSV or JSON file with your bibliographic records. "
                     "Columns can have any names — you'll map them after upload.")
+        st.caption("Files up to 200 MB here. For anything larger, use **Upload from URL** — "
+                   "the server streams it in chunks instead of holding it in memory.")
 
         uploaded_file = st.file_uploader("Choose a file", type=["csv", "json"],
                                          label_visibility="collapsed")
@@ -837,8 +844,11 @@ if not st.session_state.data_loaded:
                 except Exception as e:
                     st.error(f"Error downloading or reading file: {e}")
 
-    elif _panel_now == "sample":
-        st.markdown("Load the built-in DBLP sample dataset (599 records) to try the tool.")
+
+    st.markdown("---")
+
+    _f1, _f2 = st.columns([1, 1.4], gap="medium")
+    with _f1:
         if st.button("Load sample data"):
             try:
                 df = pd.read_csv("data/processed/dblp_10k_clean.csv")
@@ -852,9 +862,10 @@ if not st.session_state.data_loaded:
                 st.rerun()
             except Exception as e:
                 st.error(f"Error loading sample data: {e}")
-
-    elif _panel_now == "guide":
-        st.markdown("""
+    
+    with _f2:
+        with st.expander("Format guide — what should my file look like?"):
+            st.markdown("""
 **Required column**
 
 - `title` — paper or article title
@@ -865,7 +876,7 @@ if not st.session_state.data_loaded:
 - `venue` — conference or journal name
 - `year` — publication year
 
-**Supported formats:** CSV and JSON. Minimum 2 records; the tool works best with 100–10,000.
+**Supported formats:** CSV and JSON. Any column names work — you map them after loading.
 
 **Example CSV**
 ```csv
@@ -873,14 +884,14 @@ title,authors,venue,year
 "Deep Learning for NLP","John Smith|Jane Doe","ACL",2023
 "Machine Learning Basics","Alice Wong","ICML",2022
 ```
-        """)
-        template_csv = (
-            'title,authors,venue,year\n'
-            '"Example Paper 1","Author A|Author B","Conference Name",2023\n'
-            '"Example Paper 2","Author C","Journal Name",2023'
-        )
-        st.download_button("Download CSV template", data=template_csv,
-                           file_name="template_bibliographic_data.csv", mime="text/csv")
+""")
+            template_csv = (
+                'title,authors,venue,year\n'
+                '"Example Paper 1","Author A|Author B","Conference Name",2023\n'
+                '"Example Paper 2","Author C","Journal Name",2023'
+            )
+            st.download_button("Download CSV template", data=template_csv,
+                               file_name="template_bibliographic_data.csv", mime="text/csv")
 
     st.stop()
 
