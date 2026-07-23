@@ -600,6 +600,100 @@ if not st.session_state.data_loaded:
                     except Exception as e:
                         st.error(f"Error reading file: {e}")
 
+        # ---- Deployed / cloud: load a large file from a public URL ----
+        with st.expander("Load from a URL (works on the deployed site)"):
+            st.caption(
+                "The hosted server can't read files off your computer, but it "
+                "can download from a public link. Host your dataset somewhere "
+                "public — Hugging Face, Zenodo, a GitHub release, an S3/HTTP "
+                "link, or a Google Drive direct-download link — and paste the "
+                "URL. The server streams it in chunks, so memory stays bounded. "
+                "CSV and JSON-lines formats stream best.")
+            url = st.text_input(
+                "Public file URL",
+                placeholder="https://huggingface.co/datasets/you/data/resolve/main/records.jsonl",
+                key="url_input")
+            if st.button("Load from URL", key="load_from_url"):
+                import os, tempfile, urllib.request
+                url = (url or "").strip().strip('"')
+                if not url.lower().startswith(("http://", "https://")):
+                    st.warning("Paste a full http(s) URL.")
+                else:
+                    try:
+                        # Stream the download to a temp file (bounded memory)
+                        lower = url.lower().split("?")[0]
+                        suffix = (".csv" if lower.endswith(".csv")
+                                  else ".jsonl" if lower.endswith((".jsonl", ".ndjson"))
+                                  else ".json")
+                        tf = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+                        status = st.empty()
+                        req = urllib.request.Request(
+                            url, headers={"User-Agent": "duplicate-validator"})
+                        with urllib.request.urlopen(req) as resp:
+                            total = resp.length or 0
+                            got = 0
+                            while True:
+                                block = resp.read(1024 * 1024)  # 1 MB chunks
+                                if not block:
+                                    break
+                                tf.write(block)
+                                got += len(block)
+                                if total:
+                                    status.text(f"Downloading... {got/1e6:.0f} / {total/1e6:.0f} MB")
+                                else:
+                                    status.text(f"Downloading... {got/1e6:.0f} MB")
+                        tf.close()
+                        url_path = tf.name
+
+                        # Detect JSON-lines
+                        is_jl3 = False
+                        if suffix in (".json", ".jsonl"):
+                            try:
+                                with open(url_path, encoding="utf-8") as fh:
+                                    head = fh.readline().strip()
+                                json.loads(head); is_jl3 = head.startswith("{")
+                            except Exception:
+                                is_jl3 = suffix == ".jsonl"
+
+                        if suffix == ".csv":
+                            preview = pd.read_csv(url_path, nrows=200, dtype=str)
+                        elif is_jl3:
+                            rows = []
+                            with open(url_path, encoding="utf-8") as fh:
+                                for line in fh:
+                                    if line.strip():
+                                        rows.append(json.loads(line))
+                                    if len(rows) >= 200:
+                                        break
+                            preview = pd.DataFrame(rows)
+                        else:
+                            preview = pd.read_json(url_path).head(200)
+
+                        mapping3 = auto_guess_mapping(list(preview.columns))
+                        st.caption("Auto-detected columns: " +
+                                   ", ".join(f"{k} → {v}" for k, v in mapping3.items() if v))
+                        from scalable_processing import read_records_chunked
+                        with st.spinner("Reading file in chunks (low memory)..."):
+                            df = read_records_chunked(
+                                url_path, mapping3, is_json_lines=is_jl3,
+                                chunksize=50_000,
+                                progress=lambda k: status.text(f"Loaded {k:,} records..."))
+                        status.text(f"Loaded {len(df):,} records.")
+                        try:
+                            os.remove(url_path)
+                        except Exception:
+                            pass
+                        with st.spinner("Finding candidate duplicates (token blocking)..."):
+                            candidate_pairs = generate_candidate_pairs(df, max_pairs=500)
+                        st.session_state.df = df
+                        st.session_state.candidate_pairs = candidate_pairs
+                        st.session_state.data_loaded = True
+                        st.session_state.current_pair_idx = 0
+                        st.session_state.feedback_log = []
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error downloading or reading file: {e}")
+
     with tab2:
         st.markdown("Load the built-in DBLP sample dataset (599 records) to try the tool.")
         if st.button("Load sample data"):
