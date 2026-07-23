@@ -15,7 +15,7 @@ import Levenshtein
 
 
 st.set_page_config(
-    page_title="Duplicate Validator",
+    page_title="Twin Finder",
     page_icon="◈",
     layout="wide",
 )
@@ -410,12 +410,181 @@ def sim_bar(label, value):
     """, unsafe_allow_html=True)
 
 
-st.markdown('<div class="app-title">Duplicate Validator</div>', unsafe_allow_html=True)
-st.markdown('<div class="app-subtitle">Human-in-the-loop review for bibliographic data cleaning</div>',
-            unsafe_allow_html=True)
+if st.session_state.data_loaded:
+    # Review interface header (unchanged styling)
+    st.markdown('<div class="app-title">Twin Finder</div>', unsafe_allow_html=True)
+    st.markdown('<div class="app-subtitle">Human-in-the-loop review for bibliographic data cleaning</div>',
+                unsafe_allow_html=True)
 
 
 if not st.session_state.data_loaded:
+    # ------------------------------------------------------------------
+    # Landing page: dark canvas, applied only before a dataset is loaded
+    # ------------------------------------------------------------------
+    st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap');
+
+    /* Canvas: two overlapping glows — the intersection is the duplicate */
+    .stApp {
+        background:
+            radial-gradient(58% 52% at 33% 20%, rgba(56,132,255,.30) 0%, rgba(56,132,255,0) 62%),
+            radial-gradient(58% 52% at 67% 20%, rgba(124,92,255,.26) 0%, rgba(124,92,255,0) 62%),
+            linear-gradient(180deg, #08142B 0%, #060C1B 46%, #04070F 100%);
+        background-attachment: fixed;
+    }
+    [data-testid="stHeader"] { background: transparent; }
+    .block-container { padding-top: 3.5rem; max-width: 920px; }
+
+    /* Text on dark */
+    .stApp [data-testid="stMarkdownContainer"] p,
+    .stApp [data-testid="stMarkdownContainer"] li,
+    .stApp [data-testid="stMarkdownContainer"] strong,
+    .stApp label, .stApp [data-testid="stWidgetLabel"] p {
+        color: #B7C4DA !important;
+        font-family: 'Inter', -apple-system, sans-serif;
+    }
+    .stApp [data-testid="stCaptionContainer"] p { color: #7C8CA6 !important; }
+    .stApp h1, .stApp h2, .stApp h3,
+    .stApp [data-testid="stMarkdownContainer"] h1,
+    .stApp [data-testid="stMarkdownContainer"] h2,
+    .stApp [data-testid="stMarkdownContainer"] h3 { color: #E8F0FF !important; }
+
+    /* Hero */
+    .tf-hero { text-align: center; margin: 0.5rem 0 2.6rem 0; }
+    .tf-eyebrow {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.70rem; letter-spacing: 0.22em; text-transform: uppercase;
+        color: #6E86A8; margin-bottom: 1.1rem;
+    }
+    .tf-titlewrap { position: relative; display: inline-block; }
+    .tf-ghost {
+        position: absolute; left: 9px; top: 8px; z-index: 0;
+        font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+        font-size: clamp(3rem, 8.5vw, 5.4rem); line-height: 1;
+        letter-spacing: -0.035em; color: rgba(86,146,255,.20);
+        white-space: nowrap; pointer-events: none; user-select: none;
+    }
+    .tf-title {
+        position: relative; z-index: 1; margin: 0;
+        font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+        font-size: clamp(3rem, 8.5vw, 5.4rem); line-height: 1;
+        letter-spacing: -0.035em; white-space: nowrap;
+        background: linear-gradient(180deg, #FFFFFF 12%, #9FC2FF 100%);
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .tf-lede {
+        font-family: 'Space Grotesk', sans-serif; font-weight: 500;
+        font-size: clamp(1.05rem, 2.4vw, 1.4rem); color: #D3E0F5;
+        margin: 1.5rem auto 0.9rem auto; letter-spacing: -0.01em;
+    }
+    .tf-sub {
+        font-family: 'Inter', sans-serif; font-size: 0.97rem; line-height: 1.65;
+        color: #8DA0BC; max-width: 640px; margin: 0 auto;
+    }
+
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 1.6rem; background: transparent;
+        border-bottom: 1px solid rgba(255,255,255,.09);
+    }
+    .stTabs [data-baseweb="tab"] {
+        color: #7B8CA6; font-family: 'Inter', sans-serif; font-weight: 500;
+        padding: 0.6rem 0; background: transparent;
+    }
+    .stTabs [aria-selected="true"] { color: #EAF2FF !important; }
+    .stTabs [data-baseweb="tab-highlight"] { background: #4A8DFF; height: 2px; }
+    .stTabs [data-baseweb="tab-border"] { background: transparent; }
+
+    /* Upload dropzone */
+    [data-testid="stFileUploaderDropzone"] {
+        background: rgba(255,255,255,.035);
+        border: 1px dashed rgba(140,180,255,.28);
+        border-radius: 14px;
+    }
+    [data-testid="stFileUploaderDropzone"] * { color: #A9BAD4 !important; }
+    [data-testid="stFileUploaderDropzone"] button {
+        background: rgba(255,255,255,.07) !important;
+        color: #DDE8FA !important; border: 1px solid rgba(255,255,255,.16) !important;
+    }
+
+    /* Buttons */
+    .stApp .stButton > button {
+        background: rgba(255,255,255,.055); color: #DCE7F9;
+        border: 1px solid rgba(255,255,255,.15); border-radius: 10px;
+        font-family: 'Inter', sans-serif; font-weight: 500;
+        transition: border-color .18s ease, background .18s ease;
+    }
+    .stApp .stButton > button:hover {
+        border-color: rgba(120,170,255,.55); background: rgba(74,141,255,.12);
+        color: #FFFFFF;
+    }
+    .stApp .stButton > button[kind="primary"] {
+        background: linear-gradient(180deg, #3B84F7 0%, #1F5FD8 100%);
+        border: 1px solid #3B84F7; color: #FFFFFF;
+    }
+    .stApp .stButton > button[kind="primary"]:hover {
+        background: linear-gradient(180deg, #4A90FF 0%, #2A6BE4 100%);
+    }
+    .stApp [data-testid="stDownloadButton"] > button {
+        background: rgba(255,255,255,.055); color: #DCE7F9;
+        border: 1px solid rgba(255,255,255,.15);
+    }
+
+    /* Inputs & selects */
+    .stApp .stTextInput input {
+        background: rgba(255,255,255,.05); color: #E7EFFB;
+        border: 1px solid rgba(255,255,255,.14); border-radius: 10px;
+    }
+    .stApp .stTextInput input::placeholder { color: #61748F; }
+    .stApp [data-baseweb="select"] > div {
+        background: rgba(255,255,255,.05) !important;
+        border-color: rgba(255,255,255,.14) !important; color: #E7EFFB !important;
+    }
+    .stApp [data-baseweb="select"] svg { fill: #8FA3C0; }
+
+    /* Expander */
+    .stApp [data-testid="stExpander"] {
+        background: rgba(255,255,255,.035);
+        border: 1px solid rgba(255,255,255,.10); border-radius: 14px;
+    }
+    .stApp [data-testid="stExpander"] summary { color: #C6D5EC !important; }
+    .stApp [data-testid="stExpander"] svg { fill: #8FA3C0; }
+
+    /* Code blocks in the format guide */
+    .stApp [data-testid="stMarkdownContainer"] code {
+        background: rgba(120,170,255,.10); color: #B9D4FF;
+        border: 1px solid rgba(255,255,255,.08); border-radius: 5px;
+    }
+    .stApp pre { background: rgba(255,255,255,.045) !important;
+                 border: 1px solid rgba(255,255,255,.09); border-radius: 12px; }
+    .stApp pre code { background: transparent !important; color: #C7DBFF !important; }
+
+    .stApp hr { border-color: rgba(255,255,255,.09); }
+    footer, #MainMenu { visibility: hidden; }
+
+    @media (prefers-reduced-motion: reduce) {
+        .stApp .stButton > button { transition: none; }
+    }
+    </style>
+
+    <div class="tf-hero">
+        <div class="tf-eyebrow">Bibliographic data cleaning</div>
+        <div class="tf-titlewrap">
+            <span class="tf-ghost" aria-hidden="true">Twin Finder</span>
+            <h1 class="tf-title">Twin Finder</h1>
+        </div>
+        <p class="tf-lede">Finds the records that say the same thing twice.</p>
+        <p class="tf-sub">
+            Load a catalogue of papers and Twin Finder ranks the pairs most likely to be
+            duplicates, showing the field-by-field evidence behind every match — matching
+            titles, shared authors, venue, year. You make the final call on each one, and
+            your decisions come back as a log you can keep.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
     tab1, tab2, tab3 = st.tabs(["Upload file", "Sample data", "Format guide"])
 
     with tab1:
@@ -535,73 +704,8 @@ if not st.session_state.data_loaded:
                     except Exception as e:
                         st.error(f"Error processing file: {e}")
 
-        # ---- Very large files: read straight from disk by path ----
-        with st.expander("Very large file (multi-GB)? Load it from a local path"):
-            st.caption(
-                "Browser uploads hold the whole file in memory once, so for "
-                "files of several GB it's faster and safer to read straight "
-                "from disk. Paste the file's full path below. "
-                "(Local use only — this can't reach your disk when the app "
-                "runs on a hosting server.)")
-            big_path = st.text_input(
-                "Full path to file",
-                placeholder=r"C:\Users\you\Downloads\arxiv-metadata-oai-snapshot.json",
-                key="big_path_input")
-            if st.button("Load from path", key="load_from_path"):
-                import os
-                big_path = (big_path or "").strip().strip('"')
-                if not big_path:
-                    st.warning("Paste a file path first.")
-                elif not os.path.exists(big_path):
-                    st.error(f"File not found: {big_path}")
-                else:
-                    try:
-                        from scalable_processing import read_records_chunked
-                        is_jl2 = False
-                        if big_path.lower().endswith(".json"):
-                            try:
-                                with open(big_path, encoding="utf-8") as fh:
-                                    head = fh.readline().strip()
-                                json.loads(head); is_jl2 = head.startswith("{")
-                            except Exception:
-                                is_jl2 = False
-                        if big_path.lower().endswith(".csv"):
-                            preview = pd.read_csv(big_path, nrows=200, dtype=str)
-                        elif is_jl2:
-                            rows = []
-                            with open(big_path, encoding="utf-8") as fh:
-                                for line in fh:
-                                    if line.strip():
-                                        rows.append(json.loads(line))
-                                    if len(rows) >= 200:
-                                        break
-                            preview = pd.DataFrame(rows)
-                        else:
-                            preview = pd.read_json(big_path).head(200)
-
-                        mapping2 = auto_guess_mapping(list(preview.columns))
-                        st.caption("Auto-detected columns: " +
-                                   ", ".join(f"{k} → {v}" for k, v in mapping2.items() if v))
-                        status = st.empty()
-                        with st.spinner("Reading file in chunks (low memory)..."):
-                            df = read_records_chunked(
-                                big_path, mapping2, is_json_lines=is_jl2,
-                                chunksize=50_000,
-                                progress=lambda k: status.text(f"Loaded {k:,} records..."))
-                        status.text(f"Loaded {len(df):,} records.")
-                        with st.spinner("Finding candidate duplicates (token blocking)..."):
-                            candidate_pairs = generate_candidate_pairs(df, max_pairs=500)
-                        st.session_state.df = df
-                        st.session_state.candidate_pairs = candidate_pairs
-                        st.session_state.data_loaded = True
-                        st.session_state.current_pair_idx = 0
-                        st.session_state.feedback_log = []
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error reading file: {e}")
-
         # ---- Deployed / cloud: load a large file from a public URL ----
-        with st.expander("Load from a URL (works on the deployed site)"):
+        with st.expander("Large dataset? Load it from a URL"):
             st.caption(
                 "The hosted server can't read files off your computer, but it "
                 "can download from a public link. Host your dataset somewhere "
